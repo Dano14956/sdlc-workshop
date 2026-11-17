@@ -6,17 +6,25 @@ function takes a poll and returns a value or a new poll.
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import TypedDict
 
 
-class Poll(TypedDict):
+class _PollFields(TypedDict):
     question: str
     options: list[str]
     votes: dict[str, int]
 
 
-def create_poll(question: str, options: list[str]) -> Poll:
-    """Return a new poll with zero votes. Surrounding whitespace and blank options are dropped."""
+class Poll(_PollFields, total=False):
+    created_at: str  # ISO 8601; missing on polls saved before it was recorded
+
+
+def create_poll(question: str, options: list[str], created_at: datetime | None = None) -> Poll:
+    """Return a new poll with zero votes. Surrounding whitespace and blank options are dropped.
+
+    The caller passes `created_at` so this stays free of the clock.
+    """
     question = question.strip()
     cleaned = [option.strip() for option in options if option.strip()]
     if not question:
@@ -25,7 +33,14 @@ def create_poll(question: str, options: list[str]) -> Poll:
         raise ValueError("A poll needs at least two options.")
     if len(set(cleaned)) != len(cleaned):
         raise ValueError("Options must be unique.")
-    return {"question": question, "options": cleaned, "votes": {option: 0 for option in cleaned}}
+    poll: Poll = {
+        "question": question,
+        "options": cleaned,
+        "votes": {option: 0 for option in cleaned},
+    }
+    if created_at is not None:
+        poll["created_at"] = created_at.isoformat()
+    return poll
 
 
 def vote(poll: Poll, option: str) -> Poll:
@@ -43,3 +58,11 @@ def tally(poll: Poll) -> list[tuple[str, int]]:
 
 def total_votes(poll: Poll) -> int:
     return sum(poll["votes"].values())
+
+
+def created_label(poll: Poll) -> str | None:
+    """'Created 7 Nov 2026, 09:05', or None when the poll has no creation time."""
+    if "created_at" not in poll:
+        return None
+    created = datetime.fromisoformat(poll["created_at"])
+    return f"Created {created.day} {created:%b %Y, %H:%M}"

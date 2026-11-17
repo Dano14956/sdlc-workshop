@@ -1,6 +1,8 @@
+from datetime import datetime
+
 import pytest
 
-from poll.core import create_poll, tally, total_votes, vote
+from poll.core import create_poll, created_label, tally, total_votes, vote
 
 
 def make_poll():
@@ -71,3 +73,25 @@ def test_total_votes_counts_every_vote():
 
 def test_total_votes_is_zero_for_a_new_poll():
     assert total_votes(make_poll()) == 0
+
+
+def test_create_poll_records_when_it_was_created():
+    poll = create_poll("Lunch?", ["Pizza", "Sushi"], created_at=datetime(2026, 11, 17, 10, 5))
+
+    assert poll["created_at"] == "2026-11-17T10:05:00"
+
+
+def test_vote_keeps_the_creation_time():
+    poll = create_poll("Lunch?", ["Pizza", "Sushi"], created_at=datetime(2026, 11, 17, 10, 5))
+
+    assert vote(poll, "Pizza")["created_at"] == "2026-11-17T10:05:00"
+
+
+def test_created_label_shows_the_date_and_time():
+    poll = create_poll("Lunch?", ["Pizza", "Sushi"], created_at=datetime(2026, 11, 7, 9, 5))
+
+    assert created_label(poll) == "Created 7 Nov 2026, 09:05"
+
+
+def test_created_label_is_none_for_a_poll_saved_before_creation_times():
+    assert created_label(make_poll()) is None
